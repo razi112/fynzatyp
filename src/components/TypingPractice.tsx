@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { RotateCcw, Play, Pause } from "lucide-react";
+import { RotateCcw, Play, LogOut, User } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 // Typing texts database
 const typingTexts = {
@@ -40,6 +42,8 @@ interface TypingStats {
 }
 
 export default function TypingPractice() {
+  const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
   const [selectedLength, setSelectedLength] = useState<TextLength>('short');
   const [selectedTopic, setSelectedTopic] = useState<TextTopic>('nature');
   const [currentText, setCurrentText] = useState('');
@@ -146,13 +150,46 @@ export default function TypingPractice() {
     <div className="min-h-screen bg-gradient-primary p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold text-white drop-shadow-lg">
-            ⌨️ Typing Practice
-          </h1>
-          <p className="text-white/90 text-lg">
-            Improve your typing speed and accuracy with fun exercises!
-          </p>
+        <div className="flex items-center justify-between">
+          <div className="text-center flex-1 space-y-2">
+            <h1 className="text-4xl font-bold text-white drop-shadow-lg">
+              ⌨️ Typing Practice
+            </h1>
+            <p className="text-white/90 text-lg">
+              Improve your typing speed and accuracy with fun exercises!
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {user ? (
+              <>
+                <div className="flex items-center gap-2 bg-white/20 rounded-full px-4 py-2 text-white">
+                  <User className="h-4 w-4" />
+                  <span className="text-sm font-medium">
+                    {user.email?.split("@")[0]}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={signOut}
+                  className="gap-2 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <Button
+                onClick={() => navigate("/auth")}
+                className="gap-2 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                variant="outline"
+              >
+                <User className="h-4 w-4" />
+                Sign In
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Settings */}
