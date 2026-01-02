@@ -41,6 +41,56 @@ export type Database = {
         }
         Relationships: []
       }
+      typing_sessions: {
+        Row: {
+          accuracy: number
+          completed_at: string
+          correct_chars: number
+          duration_seconds: number
+          id: string
+          incorrect_chars: number
+          text_length: string
+          text_topic: string
+          total_chars: number
+          user_id: string
+          wpm: number
+        }
+        Insert: {
+          accuracy: number
+          completed_at?: string
+          correct_chars: number
+          duration_seconds: number
+          id?: string
+          incorrect_chars: number
+          text_length: string
+          text_topic: string
+          total_chars: number
+          user_id: string
+          wpm: number
+        }
+        Update: {
+          accuracy?: number
+          completed_at?: string
+          correct_chars?: number
+          duration_seconds?: number
+          id?: string
+          incorrect_chars?: number
+          text_length?: string
+          text_topic?: string
+          total_chars?: number
+          user_id?: string
+          wpm?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "typing_sessions_user_id_fkey_profiles"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
