@@ -8,13 +8,14 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { RotateCcw, Play, LogOut, User, Trophy, Clock, Target, Volume2, VolumeX } from "lucide-react";
+import { RotateCcw, Play, LogOut, User, Trophy, Clock, Target, Volume2, VolumeX, BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { Celebration } from "./Celebration";
 import Leaderboard from "./Leaderboard";
+import StatsDashboard from "./StatsDashboard";
 
 // Extended typing texts database
 const typingTexts = {
@@ -389,10 +390,14 @@ export default function TypingPractice() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-white/20">
+          <TabsList className="grid w-full grid-cols-3 bg-white/20">
             <TabsTrigger value="practice" className="gap-2 data-[state=active]:bg-white">
               <Target className="h-4 w-4" />
               Practice
+            </TabsTrigger>
+            <TabsTrigger value="stats" className="gap-2 data-[state=active]:bg-white">
+              <BarChart3 className="h-4 w-4" />
+              My Stats
             </TabsTrigger>
             <TabsTrigger value="leaderboard" className="gap-2 data-[state=active]:bg-white">
               <Trophy className="h-4 w-4" />
@@ -611,6 +616,10 @@ export default function TypingPractice() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="stats" className="mt-4">
+            <StatsDashboard />
           </TabsContent>
 
           <TabsContent value="leaderboard" className="mt-4">
