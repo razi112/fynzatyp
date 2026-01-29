@@ -7,10 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { RotateCcw, Play, LogOut, User, Trophy, Clock, Target } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { RotateCcw, Play, LogOut, User, Trophy, Clock, Target, Volume2, VolumeX } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { Celebration } from "./Celebration";
 import Leaderboard from "./Leaderboard";
 
 // Extended typing texts database
@@ -58,6 +61,9 @@ export default function TypingPractice() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const { playSound, playVictoryFanfare, playNewRecordFanfare } = useSoundEffects(soundEnabled);
+
   const [selectedLength, setSelectedLength] = useState<TextLength>('short');
   const [selectedTopic, setSelectedTopic] = useState<TextTopic>('nature');
   const [selectedTime, setSelectedTime] = useState<TimeLimit>('unlimited');
@@ -78,8 +84,40 @@ export default function TypingPractice() {
   const [activeTab, setActiveTab] = useState('practice');
   const [sessionSaved, setSessionSaved] = useState(false);
   
+  // Personal best tracking
+  const [personalBest, setPersonalBest] = useState<{ wpm: number; accuracy: number } | null>(null);
+  const [celebration, setCelebration] = useState<{ type: 'complete' | 'newRecord' | 'milestone'; wpm?: number; accuracy?: number; message?: string } | null>(null);
+  const [lastInputLength, setLastInputLength] = useState(0);
+  
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch personal best on mount
+  useEffect(() => {
+    if (user) {
+      fetchPersonalBest();
+    }
+  }, [user]);
+
+  const fetchPersonalBest = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('typing_sessions')
+        .select('wpm, accuracy')
+        .eq('user_id', user.id)
+        .order('wpm', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (data && !error) {
+        setPersonalBest({ wpm: data.wpm, accuracy: data.accuracy });
+      }
+    } catch (e) {
+      // No personal best yet
+    }
+  };
 
   // Initialize text
   useEffect(() => {
@@ -148,9 +186,33 @@ export default function TypingPractice() {
   }, [calculateStats]);
 
   const handleSessionComplete = async () => {
-    if (!user || sessionSaved || !startTime) return;
+    if (sessionSaved || !startTime) return;
 
     const duration = Math.floor((Date.now() - startTime) / 1000);
+    const isNewRecord = personalBest ? stats.wpm > personalBest.wpm : stats.wpm > 0;
+    
+    // Trigger celebration
+    if (isNewRecord && user) {
+      playNewRecordFanfare();
+      setCelebration({
+        type: 'newRecord',
+        wpm: stats.wpm,
+        accuracy: stats.accuracy,
+        message: personalBest 
+          ? `You beat your previous best of ${personalBest.wpm} WPM!` 
+          : 'Your first recorded score!'
+      });
+      setPersonalBest({ wpm: stats.wpm, accuracy: stats.accuracy });
+    } else {
+      playVictoryFanfare();
+      setCelebration({
+        type: 'complete',
+        wpm: stats.wpm,
+        accuracy: stats.accuracy,
+      });
+    }
+
+    if (!user) return;
     
     try {
       const { error } = await supabase.from('typing_sessions').insert({
@@ -169,7 +231,7 @@ export default function TypingPractice() {
       
       setSessionSaved(true);
       toast({
-        title: "Session saved! 🎉",
+        title: isNewRecord ? "🏆 New Personal Best!" : "Session saved! 🎉",
         description: `WPM: ${stats.wpm} | Accuracy: ${stats.accuracy}%`
       });
     } catch (error) {
@@ -217,6 +279,18 @@ export default function TypingPractice() {
       }
     }
     
+    // Play sound effects for typing
+    if (value.length > lastInputLength) {
+      const lastChar = value[value.length - 1];
+      const expectedChar = currentText[value.length - 1];
+      if (lastChar === expectedChar) {
+        playSound('keypress');
+      } else {
+        playSound('error');
+      }
+    }
+    setLastInputLength(value.length);
+    
     // Prevent typing beyond text length
     if (value.length <= currentText.length) {
       setUserInput(value);
@@ -239,20 +313,49 @@ export default function TypingPractice() {
   const isCompleted = progress === 100 || (timeRemaining === 0 && selectedTime !== 'unlimited');
 
   return (
-    <div className="min-h-screen bg-gradient-primary p-4 md:p-6">
-      <div className="max-w-5xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-center md:text-left space-y-2">
-            <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-lg">
-              ⌨️ TypeMaster Pro
-            </h1>
-            <p className="text-white/90 text-sm md:text-lg">
-              Improve your typing speed and accuracy!
-            </p>
-          </div>
+    <>
+      {/* Celebration overlay */}
+      {celebration && (
+        <Celebration
+          type={celebration.type}
+          wpm={celebration.wpm}
+          accuracy={celebration.accuracy}
+          message={celebration.message}
+          onComplete={() => setCelebration(null)}
+        />
+      )}
+      
+      <div className="min-h-screen bg-gradient-primary p-4 md:p-6">
+        <div className="max-w-5xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-center md:text-left space-y-2">
+              <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-lg">
+                ⌨️ TypeMaster Pro
+              </h1>
+              <p className="text-white/90 text-sm md:text-lg">
+                Improve your typing speed and accuracy!
+                {personalBest && (
+                  <span className="ml-2 inline-flex items-center gap-1 bg-white/20 rounded-full px-2 py-0.5 text-xs">
+                    <Trophy className="h-3 w-3" />
+                    Best: {personalBest.wpm} WPM
+                  </span>
+                )}
+              </p>
+            </div>
           
           <div className="flex items-center gap-3">
+            {/* Sound Toggle */}
+            <div className="flex items-center gap-2 bg-white/20 rounded-full px-3 py-2">
+              <button
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className="text-white hover:text-white/80 transition-colors"
+                aria-label={soundEnabled ? "Mute sounds" : "Enable sounds"}
+              >
+                {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+              </button>
+            </div>
+            
             {user ? (
               <>
                 <div className="flex items-center gap-2 bg-white/20 rounded-full px-4 py-2 text-white">
@@ -516,5 +619,6 @@ export default function TypingPractice() {
         </Tabs>
       </div>
     </div>
+    </>
   );
 }
