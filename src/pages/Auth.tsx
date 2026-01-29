@@ -86,7 +86,7 @@ const Auth = () => {
     } else {
       toast({
         title: "Account created!",
-        description: "Welcome to TypeMaster Pro!",
+        description: "Welcome to Fynzatyp!",
       });
     }
 
@@ -123,7 +123,7 @@ const Auth = () => {
               <Keyboard className="w-8 h-8 text-primary-foreground" />
             </div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              TypeMaster Pro
+              Fynzatyp
             </h1>
           </div>
           <p className="text-muted-foreground">

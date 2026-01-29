@@ -331,7 +331,7 @@ export default function TypingPractice() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-center md:text-left space-y-2">
               <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-lg">
-                ⌨️ TypeMaster Pro
+                ⌨️ Fynzatyp
               </h1>
               <p className="text-white/90 text-sm md:text-lg">
                 Improve your typing speed and accuracy!
