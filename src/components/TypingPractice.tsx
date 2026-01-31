@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { RotateCcw, Play, LogOut, User, Trophy, Clock, Target, Volume2, VolumeX, BarChart3, AlertTriangle } from "lucide-react";
+import { RotateCcw, Play, LogOut, User, Trophy, Clock, Target, Volume2, VolumeX, BarChart3, AlertTriangle, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,7 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { Celebration } from "./Celebration";
 import Leaderboard from "./Leaderboard";
 import StatsDashboard from "./StatsDashboard";
+import MultiplayerRace from "./MultiplayerRace";
 import { DifficultySelector, DifficultyLevel, difficultyConfigs, difficultyTexts, getTextForDifficulty } from "./DifficultySelector";
 
 // Extended typing texts database
@@ -423,18 +424,22 @@ export default function TypingPractice() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 bg-white/20">
+          <TabsList className="grid w-full grid-cols-4 bg-white/20">
             <TabsTrigger value="practice" className="gap-2 data-[state=active]:bg-white">
               <Target className="h-4 w-4" />
-              Practice
+              <span className="hidden sm:inline">Practice</span>
+            </TabsTrigger>
+            <TabsTrigger value="race" className="gap-2 data-[state=active]:bg-white">
+              <Zap className="h-4 w-4" />
+              <span className="hidden sm:inline">Race</span>
             </TabsTrigger>
             <TabsTrigger value="stats" className="gap-2 data-[state=active]:bg-white">
               <BarChart3 className="h-4 w-4" />
-              My Stats
+              <span className="hidden sm:inline">Stats</span>
             </TabsTrigger>
             <TabsTrigger value="leaderboard" className="gap-2 data-[state=active]:bg-white">
               <Trophy className="h-4 w-4" />
-              Leaderboard
+              <span className="hidden sm:inline">Board</span>
             </TabsTrigger>
           </TabsList>
 
@@ -674,6 +679,10 @@ export default function TypingPractice() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="race" className="mt-4">
+            <MultiplayerRace />
           </TabsContent>
 
           <TabsContent value="stats" className="mt-4">
