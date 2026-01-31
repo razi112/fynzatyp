@@ -41,6 +41,95 @@ export type Database = {
         }
         Relationships: []
       }
+      race_participants: {
+        Row: {
+          accuracy: number
+          display_name: string
+          finished_at: string | null
+          id: string
+          joined_at: string
+          position: number | null
+          progress: number
+          race_id: string
+          user_id: string
+          wpm: number
+        }
+        Insert: {
+          accuracy?: number
+          display_name: string
+          finished_at?: string | null
+          id?: string
+          joined_at?: string
+          position?: number | null
+          progress?: number
+          race_id: string
+          user_id: string
+          wpm?: number
+        }
+        Update: {
+          accuracy?: number
+          display_name?: string
+          finished_at?: string | null
+          id?: string
+          joined_at?: string
+          position?: number | null
+          progress?: number
+          race_id?: string
+          user_id?: string
+          wpm?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "race_participants_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "typing_races"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      typing_races: {
+        Row: {
+          created_at: string
+          difficulty: string
+          finished_at: string | null
+          host_user_id: string
+          id: string
+          join_code: string
+          max_players: number
+          race_text: string
+          started_at: string | null
+          status: Database["public"]["Enums"]["race_status"]
+          text_topic: string
+        }
+        Insert: {
+          created_at?: string
+          difficulty?: string
+          finished_at?: string | null
+          host_user_id: string
+          id?: string
+          join_code: string
+          max_players?: number
+          race_text: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["race_status"]
+          text_topic?: string
+        }
+        Update: {
+          created_at?: string
+          difficulty?: string
+          finished_at?: string | null
+          host_user_id?: string
+          id?: string
+          join_code?: string
+          max_players?: number
+          race_text?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["race_status"]
+          text_topic?: string
+        }
+        Relationships: []
+      }
       typing_sessions: {
         Row: {
           accuracy: number
@@ -99,7 +188,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      race_status: "waiting" | "countdown" | "in_progress" | "completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -226,6 +315,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      race_status: ["waiting", "countdown", "in_progress", "completed"],
+    },
   },
 } as const
