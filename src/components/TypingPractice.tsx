@@ -7,8 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { RotateCcw, Play, LogOut, User, Trophy, Clock, Target, Volume2, VolumeX, BarChart3 } from "lucide-react";
+import { RotateCcw, Play, LogOut, User, Trophy, Clock, Target, Volume2, VolumeX, BarChart3, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +15,7 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { Celebration } from "./Celebration";
 import Leaderboard from "./Leaderboard";
 import StatsDashboard from "./StatsDashboard";
+import { DifficultySelector, DifficultyLevel, difficultyConfigs, difficultyTexts, getTextForDifficulty } from "./DifficultySelector";
 
 // Extended typing texts database
 const typingTexts = {
@@ -45,7 +45,6 @@ const typingTexts = {
   }
 };
 
-type TextLength = 'short' | 'medium' | 'long';
 type TextTopic = 'nature' | 'technology' | 'motivation' | 'daily life' | 'quotes' | 'code';
 type TimeLimit = 'unlimited' | '30' | '60' | '120';
 
@@ -65,9 +64,11 @@ export default function TypingPractice() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const { playSound, playVictoryFanfare, playNewRecordFanfare } = useSoundEffects(soundEnabled);
 
-  const [selectedLength, setSelectedLength] = useState<TextLength>('short');
+  // Difficulty system
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>('beginner');
   const [selectedTopic, setSelectedTopic] = useState<TextTopic>('nature');
   const [selectedTime, setSelectedTime] = useState<TimeLimit>('unlimited');
+  const [failedAccuracy, setFailedAccuracy] = useState(false);
   const [currentText, setCurrentText] = useState('');
   const [customText, setCustomText] = useState('');
   const [useCustomText, setUseCustomText] = useState(false);
@@ -120,13 +121,20 @@ export default function TypingPractice() {
     }
   };
 
-  // Initialize text
+  // Update time limit when difficulty changes
+  useEffect(() => {
+    const config = difficultyConfigs[difficulty];
+    setSelectedTime(config.defaultTimeLimit as TimeLimit);
+  }, [difficulty]);
+
+  // Initialize text based on difficulty
   useEffect(() => {
     if (!useCustomText) {
-      setCurrentText(typingTexts[selectedLength][selectedTopic]);
+      const text = getTextForDifficulty(difficulty, selectedTopic, typingTexts);
+      setCurrentText(text);
     }
     resetPractice();
-  }, [selectedLength, selectedTopic, useCustomText]);
+  }, [difficulty, selectedTopic, useCustomText]);
 
   // Timer effect
   useEffect(() => {
@@ -190,6 +198,22 @@ export default function TypingPractice() {
     if (sessionSaved || !startTime) return;
 
     const duration = Math.floor((Date.now() - startTime) / 1000);
+    const config = difficultyConfigs[difficulty];
+    
+    // Check error tolerance
+    const meetsAccuracyRequirement = stats.accuracy >= config.errorTolerance;
+    
+    if (!meetsAccuracyRequirement && config.errorTolerance > 0) {
+      setFailedAccuracy(true);
+      playSound('error');
+      toast({
+        title: "❌ Accuracy Too Low",
+        description: `${config.label} mode requires ${config.errorTolerance}%+ accuracy. You got ${stats.accuracy}%.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     const isNewRecord = personalBest ? stats.wpm > personalBest.wpm : stats.wpm > 0;
     
     // Trigger celebration
@@ -215,13 +239,21 @@ export default function TypingPractice() {
 
     if (!user) return;
     
+    // Map difficulty to text_length for database compatibility
+    const lengthMap: Record<DifficultyLevel, string> = {
+      beginner: 'short',
+      intermediate: 'medium',
+      advanced: 'long',
+      expert: 'long'
+    };
+    
     try {
       const { error } = await supabase.from('typing_sessions').insert({
         user_id: user.id,
         wpm: stats.wpm,
         accuracy: stats.accuracy,
         duration_seconds: duration,
-        text_length: selectedLength,
+        text_length: lengthMap[difficulty],
         text_topic: useCustomText ? 'custom' : selectedTopic,
         correct_chars: stats.correct,
         incorrect_chars: stats.incorrect,
@@ -233,7 +265,7 @@ export default function TypingPractice() {
       setSessionSaved(true);
       toast({
         title: isNewRecord ? "🏆 New Personal Best!" : "Session saved! 🎉",
-        description: `WPM: ${stats.wpm} | Accuracy: ${stats.accuracy}%`
+        description: `WPM: ${stats.wpm} | Accuracy: ${stats.accuracy}% | ${config.label} Mode`
       });
     } catch (error) {
       console.error('Error saving session:', error);
@@ -246,6 +278,7 @@ export default function TypingPractice() {
     setStartTime(null);
     setTimeRemaining(null);
     setSessionSaved(false);
+    setFailedAccuracy(false);
     setStats({
       wpm: 0,
       accuracy: 100,
@@ -406,7 +439,35 @@ export default function TypingPractice() {
           </TabsList>
 
           <TabsContent value="practice" className="space-y-4 mt-4">
-            {/* Settings */}
+            {/* Difficulty Selection */}
+            <Card className="shadow-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  🎮 Choose Difficulty
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DifficultySelector
+                  selected={difficulty}
+                  onSelect={setDifficulty}
+                  disabled={isActive}
+                />
+                
+                {/* Difficulty info banner */}
+                {difficulty !== 'beginner' && (
+                  <div className="mt-4 p-3 rounded-lg bg-muted flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <span className="font-medium">{difficultyConfigs[difficulty].label} Mode:</span>
+                      {' '}Requires {difficultyConfigs[difficulty].errorTolerance}%+ accuracy.
+                      {selectedTime !== 'unlimited' && ` Time limit: ${selectedTime}s.`}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Topic & Time Settings */}
             <Card className="shadow-card">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -415,20 +476,6 @@ export default function TypingPractice() {
               </CardHeader>
               <CardContent className="flex flex-wrap gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Length</label>
-                  <Select value={selectedLength} onValueChange={(value: TextLength) => setSelectedLength(value)}>
-                    <SelectTrigger className="w-[130px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="short">📄 Short</SelectItem>
-                      <SelectItem value="medium">📃 Medium</SelectItem>
-                      <SelectItem value="long">📋 Long</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
                   <label className="text-sm font-medium">Topic</label>
                   <Select 
                     value={selectedTopic} 
@@ -436,7 +483,7 @@ export default function TypingPractice() {
                       setSelectedTopic(value);
                       setUseCustomText(false);
                     }}
-                    disabled={useCustomText}
+                    disabled={useCustomText || isActive}
                   >
                     <SelectTrigger className="w-[140px]">
                       <SelectValue />
@@ -457,7 +504,11 @@ export default function TypingPractice() {
                     <Clock className="h-3 w-3" />
                     Time Limit
                   </label>
-                  <Select value={selectedTime} onValueChange={(value: TimeLimit) => setSelectedTime(value)}>
+                  <Select 
+                    value={selectedTime} 
+                    onValueChange={(value: TimeLimit) => setSelectedTime(value)}
+                    disabled={isActive}
+                  >
                     <SelectTrigger className="w-[130px]">
                       <SelectValue />
                     </SelectTrigger>
@@ -475,6 +526,7 @@ export default function TypingPractice() {
                     variant={useCustomText ? "default" : "outline"}
                     onClick={() => setUseCustomText(!useCustomText)}
                     size="sm"
+                    disabled={isActive}
                   >
                     ✏️ Custom Text
                   </Button>
@@ -599,11 +651,17 @@ export default function TypingPractice() {
                     </Button>
                   </div>
                   
-                  {isCompleted && (
-                    <Badge variant="secondary" className="bg-gradient-success text-white text-sm md:text-lg px-4 py-2">
-                      🎉 {timeRemaining === 0 ? "Time's Up!" : "Completed!"}
-                    </Badge>
-                  )}
+                {isCompleted && !failedAccuracy && (
+                  <Badge variant="secondary" className="bg-gradient-success text-white text-sm md:text-lg px-4 py-2">
+                    🎉 {timeRemaining === 0 ? "Time's Up!" : "Completed!"}
+                  </Badge>
+                )}
+                
+                {failedAccuracy && (
+                  <Badge variant="destructive" className="text-sm md:text-lg px-4 py-2">
+                    ❌ Below {difficultyConfigs[difficulty].errorTolerance}% Accuracy
+                  </Badge>
+                )}
                 </div>
 
                 {!user && isCompleted && (
